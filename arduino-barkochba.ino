@@ -572,8 +572,9 @@ char *getInput(char *buf, uint16_t size, uint16_t minCharacters) {
 
 	while(true) {
 		while(Serial.available() > 0) {
+			buf[count] = '\0';
+
 			char chr = Serial.read();
-			Serial.print(chr);
 
 			if(chr == '\n' || chr == '\r') {
 				Serial.println();
@@ -586,15 +587,19 @@ char *getInput(char *buf, uint16_t size, uint16_t minCharacters) {
 					Serial.println(F(" character(s) needed! Please make it longer."));
 					break;
 				} else {
-					buf[count] = '\0';
 					return buf;
 				}
 			}
 
 			if(chr == '\b' or chr == 127) {
+				if(count != 0) {
+					Serial.print(F("\b \b")); // go back, delete character, go back again
+					--count;
+				}
 				continue;
 			}
 
+			Serial.print(chr);
 			buf[count] = chr;
 
 			++count;
@@ -632,7 +637,7 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 		free(tag);
 	}
 
-	char str[50];
+	char str[51];
 	char *strippedStr;
 	uint8_t index;
 
@@ -640,9 +645,9 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 		Serial.print("How would you ask a question about it: ");
 		
 		getInput(str, sizeof(str), 2);
-		
+
 		index = matchQuestionTag(str, &strippedStr);
-		
+
 		size_t len = strlen(strippedStr);
 		if(len < 2) {
 			Serial.println(F("Too short. Please write more characters."));
@@ -656,7 +661,7 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 	}
 	
 	QuestionNode newQuestion;
-	newQuestion.questionTag = (index == -1) ? 0 : index;
+	newQuestion.questionTag = (index == (uint8_t)-1) ? 0 : index;
 	newQuestion.text = strippedStr;
 	newQuestion.noAddress = 0;
 	newQuestion.yesAddress = 0;
