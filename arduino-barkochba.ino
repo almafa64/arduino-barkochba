@@ -3,13 +3,13 @@
 
 // ----- Defines -----
 
-//#define CLEAR_RUN
+#define CLEAR_RUN
 
 #define LEN(arr) ((sizeof(arr))/(sizeof(arr[0])))
 
-#define BIT(nth_bit)                      (1U << (nth_bit)) //bit(nth_bit)
-#define CHECK_BIT(data, bit)              ((data) & BIT(bit)) //bitRead(data, bit)
-#define GET_WITHOUT_FLAGS(data, flagMask) ((data) & (flagMask))
+#define BIT(nth_bit)                         (1U << (nth_bit)) //bit(nth_bit)
+#define CHECK_BIT(data, bit)                 ((data) & BIT(bit)) //bitRead(data, bit)
+#define GET_WITHOUT_FLAGS(data, flagMask)    ((data) & (flagMask))
 
 #define IS_EEPROM_ADDRESS(address)           CHECK_BIT((address), 15)
 #define GET_EEPROM_BASED_ADDRESS(address)    GET_WITHOUT_FLAGS((address), ~BIT(15))
@@ -84,51 +84,47 @@ const PROGMEM char *const QUESTION_TAGS[] = {__s0, __s1, __s2, __s3, __s4, __s5,
 // y/n = yes/no branch
 // 2. number = y/n branch count in level
 
-// stellaris: living X -> intangible O -> form of entertainment O -> digital O -> video game O -> scifi O -> focus on empire management O -> stellaris? 
+CREATE_QUESTION(1, "living being", 1, 2, QT_IS_IT | QT_A_AN);                     // 0
 
-CREATE_QUESTION(1, "living being", 1, 2, QT_IS_IT | QT_A_AN);               // 0
+CREATE_QUESTION(2y1, "animal", 3, 4, QT_IS_IT | QT_A_AN);                         // 1
+CREATE_QUESTION(2n1, "intangible", 5, 6, QT_IS_IT);                               // 2
 
-CREATE_QUESTION(2y1, "animal", 3, 4, QT_IS_IT | QT_A_AN);                   // 1
-CREATE_QUESTION(2n1, "intangible", 5, 6, QT_IS_IT);                         // 2
+CREATE_QUESTION(3y1, "mammal", 7, 8, QT_IS_IT | QT_A_AN);                         // 3
+CREATE_QUESTION(3n1, "type of flower", 9, 10, QT_IS_IT | QT_A_AN);                // 4
+CREATE_QUESTION(3y2, "form of entertainment", 11, 12, QT_IS_IT | QT_A_AN);        // 5
+CREATE_QUESTION(3n2, "small", 13, 14, QT_IS_IT);                                  // 6
 
-CREATE_QUESTION(3y1, "mammal", 7, 8, QT_IS_IT | QT_A_AN);                   // 3
-CREATE_QUESTION(3n1, "type of flower", 9, 10, QT_IS_IT | QT_A_AN);          // 4
-CREATE_QUESTION(3y2, "form of entertainment", 11, 12, QT_IS_IT | QT_A_AN);  // 5
-CREATE_QUESTION(3n2, "small", 13, 14, QT_IS_IT);                            // 6
+CREATE_QUESTION(4y1, "human", 15, 16, QT_IS_IT | QT_A_AN);                        // 7
+CREATE_QUESTION(4n1, "reptile", 17, 18, QT_IS_IT | QT_A_AN);                      // 8
+CREATE_QUESTION(4y2, "yellow", 19, 20, QT_IS_IT);                                 // 9
+CREATE_QUESTION(4n2, "fruit", 21, 22, QT_IS_IT | QT_A_AN);                        // 10
+CREATE_QUESTION(4y3, "digital", 23, 24, QT_IS_IT);                                // 11
+CREATE_QUESTION(4n3, "school subject", 25, 26, QT_IS_IT | QT_A_AN);               // 12
+CREATE_QUESTION(4y4, "paper", 27, 28, QT_MADE_OF);                                // 13
+CREATE_QUESTION(4n4, "used for living", 29, 30, QT_CAN_BE);                       // 14
 
-CREATE_QUESTION(4y1, "human", 15, 16, QT_IS_IT | QT_A_AN);                  // 7
-CREATE_QUESTION(4n1, "reptile", 17, 18, QT_IS_IT | QT_A_AN);                // 8
-CREATE_QUESTION(4y2, "yellow", 19, 20, QT_IS_IT);                           // 9
-CREATE_QUESTION(4n2, "fruit", 21, 22, QT_IS_IT | QT_A_AN);                  // 10
-CREATE_QUESTION(4y3, "digital", 23, 24, QT_IS_IT);                          // 11
-CREATE_QUESTION(4n3, "school subject", 25, 26, QT_IS_IT | QT_A_AN);         // 12
-CREATE_QUESTION(4y4, "paper", 27, 28, QT_MADE_OF);                          // 13
-CREATE_QUESTION(4n4, "used for living", 29, 30, QT_CAN_BE);                 // 14
+CREATE_QUESTION(5y1, "famous", GEA(0), GEA(1), QT_IS_THIS_INDIVIDUAL);            // 15 -> y: Hatalyak Balint, n: Elon Musk
+CREATE_QUESTION(5n1, "carnivore", GEA(2), GEA(3), QT_IS_IT | QT_A_AN);            // 16 -> y: Wolf, n: Cow
+CREATE_QUESTION(5y2, "have legs", GEA(4), GEA(5), QT_DOES_IT);                    // 17 -> y: Lizard, n: Snake
+CREATE_QUESTION(5n2, "have beak", GEA(6), GEA(7), QT_DOES_IT | QT_A_AN);          // 18 -> y: Parrot, n: Fish
+CREATE_QUESTION(5y3, "look up to the sun", GEA(8), GEA(9), QT_DOES_IT);           // 19 -> y: Sunflower, n: Daffodils
+CREATE_QUESTION(5n3, "small", GEA(10), GEA(11), QT_IS_IT);                        // 20 -> y: Lobelia, n: Bamboo
+CREATE_QUESTION(5y4, "red", GEA(12), GEA(13), QT_IS_IT);                          // 21 -> y: Apple, n: Banana
+CREATE_QUESTION(5n4, "spicy", GEA(14), GEA(15), QT_IS_IT);                        // 22 -> y: Chili, n: Potato
+CREATE_QUESTION(5y5, "video game", 31, 32, QT_IS_IT | QT_A_AN);                   // 23
+CREATE_QUESTION(5n5, "laughed about", GEA(16), GEA(17), QT_CAN_BE);               // 24 -> y: USA, n: Tragic show
+CREATE_QUESTION(5y6, "fun", GEA(18), GEA(19), QT_IS_IT);                          // 25 -> y: IT, n: Physics
+CREATE_QUESTION(5n6, "natural disaster", GEA(20), GEA(21), QT_IS_IT | QT_A_AN);   // 26 -> y: Vulcano eruption, n: Your mom
+CREATE_QUESTION(5y7, "hold infromation", GEA(22), GEA(23), QT_DOES_IT);           // 27 -> y: Photograph, n: White clear paper
+CREATE_QUESTION(5n7, "heavy", GEA(24), GEA(25), QT_IS_IT);                        // 28 -> y: Tungsten cube, n: Smartphone
+CREATE_QUESTION(5y8, "move", GEA(26), GEA(27), QT_CAN_IT);                        // 29 -> y: Car, n: House 
+CREATE_QUESTION(5n8, "fly", GEA(28), GEA(29), QT_CAN_IT);                         // 30 -> y: Rocket, n: Antenna
 
-// TODO: calculate EEPROM addresses
+CREATE_QUESTION(6y1, "scifi", 33, 34, QT_IS_IT);                                  // 31
+CREATE_QUESTION(6n1, "music", GEA(30), GEA(31), QT_IS_IT);                        // 32 -> y: SKIDS, n: SKIDS
 
-CREATE_QUESTION(5y1, "famous", GEA(0), GEA(1), QT_IS_THIS_INDIVIDUAL);              // 15 -> y: Hatalyak Balint, n: Elon Musk
-CREATE_QUESTION(5n1, "carnivore", GEA(2), GEA(3), QT_IS_IT | QT_A_AN);              // 16 -> y: Wolf, n: Cow
-CREATE_QUESTION(5y2, "have legs", GEA(4), GEA(5), QT_DOES_IT);                      // 17 -> y: Lizard, n: Snake
-CREATE_QUESTION(5n2, "have beak", GEA(6), GEA(7), QT_DOES_IT | QT_A_AN);            // 18 -> y: Parrot, n: Fish
-CREATE_QUESTION(5y3, "look up to the sun", GEA(8), GEA(9), QT_DOES_IT);             // 19 -> y: Sunflower, n: Daffodils
-CREATE_QUESTION(5n3, "small", GEA(10), GEA(11), QT_IS_IT);                            // 20 -> y: Lobelia, n: Bamboo
-CREATE_QUESTION(5y4, "red", GEA(12), GEA(13), QT_IS_IT);                              // 21 -> y: Apple, n: Banana
-CREATE_QUESTION(5n4, "spicy", GEA(14), GEA(15), QT_IS_IT);                            // 22 -> y: Chili, n: Potato
-CREATE_QUESTION(5y5, "video game", 31, 32, QT_IS_IT | QT_A_AN);           // 23
-CREATE_QUESTION(5n5, "laughed about", GEA(16), GEA(17), QT_CAN_BE);                   // 24 -> y: USA, n: Tragic show
-CREATE_QUESTION(5y6, "fun", GEA(18), GEA(19), QT_IS_IT);                              // 25 -> y: IT, n: Physics
-CREATE_QUESTION(5n6, "natural disaster", GEA(20), GEA(21), QT_IS_IT | QT_A_AN);       // 26 -> y: Vulcano eruption, n: Your mom
-CREATE_QUESTION(5y7, "hold infromation", GEA(22), GEA(23), QT_DOES_IT);               // 27 -> y: Photograph, n: White clear paper
-CREATE_QUESTION(5n7, "heavy", GEA(24), GEA(25), QT_IS_IT);                            // 28 -> y: Tungsten cube, n: Smartphone
-CREATE_QUESTION(5y8, "move", GEA(26), GEA(27), QT_CAN_IT);                            // 29 -> y: Car, n: House 
-CREATE_QUESTION(5n8, "fly", GEA(28), GEA(29), QT_CAN_IT);                             // 30 -> y: Rocket, n: Antenna
-
-CREATE_QUESTION(6y1, "scifi", 33, 34, QT_IS_IT);                          // 31
-CREATE_QUESTION(6n1, "music", GEA(30), GEA(31), QT_IS_IT);                            // 32 -> y: SKIDS, n: SKIDS
-
-CREATE_QUESTION(7y1, "focus on empire management", GEA(32), GEA(33), QT_DOES_IT);     // 33 -> y: Stellaris, n: Space engineers
-CREATE_QUESTION(7n1, "involve stealth", GEA(34), GEA(35), QT_DOES_IT);                // 34 -> y: Assassin's Creed, n: South park: The stick of truth
+CREATE_QUESTION(7y1, "focus on empire management", GEA(32), GEA(33), QT_DOES_IT); // 33 -> y: Stellaris, n: Space engineers
+CREATE_QUESTION(7n1, "involve stealth", GEA(34), GEA(35), QT_DOES_IT);            // 34 -> y: Assassin's Creed, n: South park: The stick of truth
 
 const PROGMEM QuestionNode ROM_QUESTIONS[] = {
 	__q1,
@@ -144,7 +140,7 @@ const PROGMEM QuestionNode ROM_QUESTIONS[] = {
 // ts = text string
 
 CREATE_ROM_TEXT( 0, "");
-CREATE_ROM_TEXT( 1, "Hatalyak Balint");
+CREATE_ROM_TEXT( 1, "Michael reeves");
 CREATE_ROM_TEXT( 2, "Elon Musk");
 CREATE_ROM_TEXT( 3, "wolf");
 CREATE_ROM_TEXT( 4, "cow");
@@ -239,6 +235,8 @@ const PROGMEM QuestionNode ROM_EXIT_QUESTIONS[] = {
 
 uint16_t eepromWriteAddress;
 uint16_t currentAddress;
+
+uint8_t currentQuestion;
 
 bool run = true;
 
@@ -507,14 +505,21 @@ QuestionNode fetchQuestion(uint16_t address) {
 }
 
 void printQuestion(QuestionNode question) {
+	Serial.print('[');
+	Serial.print(currentQuestion);
+	Serial.print(F("]: "));
+
 	if(question.questionTag != 0) {
 		uint8_t questionTag = GET_REAL_QUESTION_TYPE(question.questionTag);
 		Serial.print(reinterpret_cast<const __FlashStringHelper *>(pgm_read_ptr_near(&QUESTION_TAGS[questionTag])));
 		if(IS_A_AN_FLAG_PRESENT(question.questionTag))
 			Serial.print(isVowel(question.text[0]) ? F("an ") : F("a "));
 	}
+
 	Serial.print(question.text);
-	Serial.println('?');
+	
+	Serial.print('?');
+	Serial.print(' ');
 }
 
 void clearInputBuffer() {
@@ -522,15 +527,15 @@ void clearInputBuffer() {
 }
 
 /**
- * @brief Gets "yes" or "no" (case-insensitive) answer from user. Prompts until successful
+ * @brief Gets "yes" or "no" (case-insensitive) answer from user. Prompts until successful. (Dont print new line before this)
  * @return 0 == "no", 1 == "yes"
  */
 uint8_t getAnswer() {
-	uint8_t answer = 0xff;
-
+	uint8_t answer;
+	
 	while (true) {
 		while(!Serial.available()) {}
-	
+
 		switch(Serial.read()) {
 			case 'y':
 			case 'Y':
@@ -544,17 +549,18 @@ uint8_t getAnswer() {
 				break;
 			case 'a':
 			case 'A':
-				Serial.println(F("Dear friend\nHappy birthday!\nHope you'll enjoy this little thingamajig.\nYou can find the code here: 'https://github.com/almafa64/arduino-barkochba'."));
+				Serial.println(F("\nDear friend\nHappy birthday!\nHope you'll enjoy this little thingamajig.\nYou can find the code here: 'https://github.com/almafa64/arduino-barkochba'."));
 				break;
 		}
 
+		delay(100); // give time to get remaining characters
 		clearInputBuffer();
 		
-		if(answer != 0xff) break;
-		Serial.println(F("Only 'yes' or 'no'!"));
+		if(answer != 0xff) {
+			return answer;
+		}
+		Serial.println(F("\nOnly 'yes' or 'no'!"));
 	}
-
-	return answer;
 }
 
 /**
@@ -694,21 +700,22 @@ uint8_t generalJump(uint16_t address) {
 	}
 
 	run = false;
+	Serial.println();
 	return 0;
 }
 
 void yesJump(QuestionNode question) {
 	if(generalJump(question.yesAddress)) return;
 
-	Serial.println(F("Did i figure it out your choice?"));
+	Serial.print(F("Did i figure it out your choice? "));
 	if(getAnswer()) {
 		Serial.print(F("GG! "));
 	} else {
-		Serial.println(F("Do you want to add it?"));
+		Serial.print(F("Do you want to add it? "));
 		if(getAnswer()) makeNewQuestionNode(question, true);
 	}
 
-	Serial.println(F("\nDo you want to play again?"));
+	Serial.print(F("\nDo you want to play again? "));
 	if(getAnswer()) setup();
 }
 
@@ -717,10 +724,10 @@ void noJump(QuestionNode question) {
 
 	Serial.println(F("I couldn't figure out your choice."));
 
-	Serial.println(F("Do you want to add it?"));
+	Serial.print(F("Do you want to add it? "));
 	if(getAnswer()) makeNewQuestionNode(question, false);
 
-	Serial.println(F("Can i try guessing again?"));
+	Serial.print(F("Can i try guessing again? "));
 	if(getAnswer()) setup();
 }
 
@@ -780,24 +787,29 @@ void clearEEPROM() {
 void setup() {
 	// run can only be true here at bootup
 	if(run) {
+		Serial.begin(9600);
+		delay(500);
+
 		#ifdef CLEAR_RUN
 		clearEEPROM();
 		configureEEPROM();
 		#endif
 
-		Serial.begin(9600);
-		delay(1000);
 		eepromWriteAddress = getFirstFreeSpace(0, EMPTY_QUESTION_SIZE); // size doesnt really matter, just be bigger than 1
 		if(eepromWriteAddress == 0xffff)
 			Serial.println(F("EEPROM is out of free space. New question function is turned off."));
 	}
 
 	currentAddress = getFirstQuestionAddress();
+	currentQuestion = 0;
 	run = true;
+	Serial.println();
 }
 
 void loop() {
 	if(!run) return;
+
+	++currentQuestion;
 
 	QuestionNode question = fetchQuestion(currentAddress);
 	if(question.text == NULL) {
@@ -813,8 +825,6 @@ void loop() {
 	} else {
 		noJump(question);
 	}
-
-	Serial.println();
 
 	free(question.text);
 }
