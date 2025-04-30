@@ -522,8 +522,16 @@ void printQuestion(QuestionNode question) {
 	Serial.print(' ');
 }
 
+/**
+ * @brief Clears Serial's input buffer, with delays to wait for not yet sent bytes
+ */
 void clearInputBuffer() {
-	while(Serial.available()) { Serial.read(); }
+	uint8_t retries = 0;
+	
+	while(++retries <= 3) {
+		delay(50);
+		while(Serial.available()) { Serial.read(); }
+	}
 }
 
 /**
@@ -553,7 +561,6 @@ uint8_t getAnswer() {
 				break;
 		}
 
-		delay(100); // give time to get remaining characters
 		clearInputBuffer();
 		
 		if(answer != 0xff) {
