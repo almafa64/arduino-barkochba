@@ -525,6 +525,7 @@ QuestionNode fetchEEPROMQuestion(EepromAddress address) {
 
 /**
  * @brief Gets question from either PROGMEM or EEPROM based on address
+ * @remark question.text stored in heap
  * @param address absolute address
  * @return question, text is NULL on error
  */
@@ -569,7 +570,7 @@ void clearInputBuffer() {
 }
 
 /**
- * @brief Gets "yes" or "no" (case-insensitive) answer from user. Prompts until successful. (Dont print new line before this)
+ * @brief Gets "yes" or "no" (case-insensitive) answer from user. Prompts until successful. (Designed to use after Serial.print())
  * @return 0 == "no", 1 == "yes"
  */
 uint8_t getAnswer() {
