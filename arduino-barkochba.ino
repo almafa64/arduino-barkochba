@@ -524,7 +524,7 @@ QuestionNode fetchEEPROMQuestion(EepromAddress address) {
 }
 
 /**
- * @brief Abstracted question getter
+ * @brief Gets question from either PROGMEM or EEPROM based on address
  * @param address absolute address
  * @return question, text is NULL on error
  */
