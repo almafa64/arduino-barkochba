@@ -547,6 +547,7 @@ void printQuestion(QuestionNode question) {
 	if(question.questionTag != 0) {
 		uint8_t questionTag = GET_REAL_QUESTION_TYPE(question.questionTag);
 		Serial.print(reinterpret_cast<const __FlashStringHelper *>(pgm_read_ptr_near(&QUESTION_TAGS[questionTag])));
+
 		if(IS_A_AN_FLAG_PRESENT(question.questionTag))
 			Serial.print(isVowel(question.text[0]) ? F("an ") : F("a "));
 	}
