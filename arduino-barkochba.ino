@@ -1,15 +1,24 @@
 #include <EEPROM.h>
 #include <ctype.h>
 
-// ----- Defines -----
+// ----- User settings -----
 
+// Uncomment this to clear EEPROM data on start, comment out to keep new questions
 #define CLEAR_RUN
+
+// ----- Defines -----
 
 #define LEN(arr) ((sizeof(arr))/(sizeof(arr[0])))
 
-#define BIT(nth_bit)                         (1U << (nth_bit)) //bit(nth_bit)
-#define CHECK_BIT(data, bit)                 ((data) & BIT(bit)) //bitRead(data, bit)
+#define BIT(nth_bit)                         (1U << (nth_bit))
+#define CHECK_BIT(data, bit)                 ((data) & BIT(bit))
 #define GET_WITHOUT_FLAGS(data, flagMask)    ((data) & (flagMask))
+
+// ['\0', yesAddress, noAddress, questionTag]
+#define EMPTY_QUESTION_SIZE (sizeof(char) + sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint8_t))
+
+// [[<ROM_TEXTS index>, '\0'], yesAddress, noAddress, questionTag]
+#define EXIT_QUESTION_SIZE (EMPTY_QUESTION_SIZE + sizeof(char))
 
 #define IS_EEPROM_ADDRESS(address)           CHECK_BIT((address), 15)
 #define GET_EEPROM_BASED_ADDRESS(address)    GET_WITHOUT_FLAGS((address), ~BIT(15))
@@ -21,7 +30,7 @@
 #define GET_REAL_QUESTION_TYPE(questionType) GET_WITHOUT_FLAGS((questionType), ~BIT(7))
 #define GET_WITH_A_AN_FLAG(questionType)     ((questionType) | BIT(7))
 
-#define GET_VALUE(data) #data
+// ----- Helper defines for PROGMEM data -----
 
 #define CREATE_QUESTION_TAG(index, text) \
 	const PROGMEM char __s##index[] = text
@@ -30,12 +39,12 @@
 	const PROGMEM char __ts##index[] = text
 
 #define CREATE_QUESTION(name, text, yes_node, no_node, flags) \
-    const PROGMEM char __qs##name[] = text; \
-    const PROGMEM QuestionNode __q##name = {(char *)__qs##name, yes_node, no_node, flags}
+	const PROGMEM char __qs##name[] = text; \
+	const PROGMEM QuestionNode __q##name = {(char *)__qs##name, yes_node, no_node, flags}
 
-#define CREATE_EXIT_QUESTION(name, flags) \
-    const PROGMEM uint8_t __eqs##name[] = {name + 1, 0}; \
-    const PROGMEM QuestionNode __eq##name = {(char *)__eqs##name, 0, 0, flags}
+#define CREATE_EXIT_QUESTION(index, flags) \
+	const PROGMEM uint8_t __eqs##index[] = {index + 1, 0}; \
+	const PROGMEM QuestionNode __eq##index = {(char *)__eqs##index, 0, 0, flags}
 
 // ----- Types -----
 
@@ -58,11 +67,7 @@ enum QuestionTag : uint8_t {
 	QT_A_AN = 1 << 7,
 };
 
-// ['\0', yesAddress, noAddress, questionTag]
-const uint16_t EMPTY_QUESTION_SIZE = sizeof(char) + sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint8_t);
-
-// [[<ROM_TEXTS index>, '\0'], yesAddress, noAddress, questionTag]
-const uint16_t EXIT_QUESTION_SIZE = EMPTY_QUESTION_SIZE + sizeof(char);
+typedef uint16_t EepromAddress;
 
 // ----- Question tags -----
 // s = string
@@ -117,7 +122,7 @@ CREATE_QUESTION(5y6, "fun", GEA(18), GEA(19), QT_IS_IT);                        
 CREATE_QUESTION(5n6, "natural disaster", GEA(20), GEA(21), QT_IS_IT | QT_A_AN);   // 26 -> y: Vulcano eruption, n: Your mom
 CREATE_QUESTION(5y7, "hold infromation", GEA(22), GEA(23), QT_DOES_IT);           // 27 -> y: Photograph, n: White clear paper
 CREATE_QUESTION(5n7, "heavy", GEA(24), GEA(25), QT_IS_IT);                        // 28 -> y: Tungsten cube, n: Smartphone
-CREATE_QUESTION(5y8, "move", GEA(26), GEA(27), QT_CAN_IT);                        // 29 -> y: Car, n: House 
+CREATE_QUESTION(5y8, "move", GEA(26), GEA(27), QT_CAN_IT);                        // 29 -> y: Car, n: House
 CREATE_QUESTION(5n8, "fly", GEA(28), GEA(29), QT_CAN_IT);                         // 30 -> y: Rocket, n: Antenna
 
 CREATE_QUESTION(6y1, "scifi", 33, 34, QT_IS_IT);                                  // 31
@@ -230,8 +235,7 @@ const PROGMEM QuestionNode ROM_EXIT_QUESTIONS[] = {
 	__eq31, __eq32, __eq33, __eq34, __eq35
 };
 
-
-// ----- Logic -----
+// ----- GLobal variables -----
 
 uint16_t eepromWriteAddress;
 uint16_t currentAddress;
@@ -240,6 +244,13 @@ uint8_t currentQuestion;
 
 bool run = true;
 
+// ----- Functions -----
+
+/**
+ * @brief Checks if chr is a vowel
+ * @param chr character to check
+ * @return 1 if vowel (a, e, i, o, u), 0 otherwise
+ */
 uint8_t isVowel(char chr) {
 	switch (tolower(chr)) {
 		case 'a':
@@ -264,6 +275,7 @@ int8_t matchQuestionTag(char *str, const char **realText) {
 	for (uint8_t i = 1; i < LEN(QUESTION_TAGS); ++i) {
 		const char *tag = (const char *)pgm_read_ptr_near(&QUESTION_TAGS[i]);
 
+		// compare all tag character to str
 		uint8_t j = 0;
 		while (true) {
 			char a = str[j];
@@ -308,6 +320,11 @@ int8_t matchQuestionTag(char *str, const char **realText) {
 	return -1; // No match
 }
 
+/**
+ * @brief Copies string from PROGMEM to heap
+ * @param str PROGMEM string pointer
+ * @return heap allocated string, or NULL on malloc error
+ */
 char *copyStrFromPROGMEM(const char *str) {
 	char *buf = (char *)malloc(strlen_P(str) + sizeof(char));
 	if(!buf) return NULL;
@@ -315,32 +332,35 @@ char *copyStrFromPROGMEM(const char *str) {
 }
 
 /**
+ * @brief Gets length of EEPROM string
  * @param address EEPROM based address
+ * @return length, or 0 on error
  */
-size_t strLenEEPROM(uint16_t address) {
+size_t strLenEEPROM(EepromAddress address) {
 	if(address >= EEPROM.length()) return 0;
 
 	size_t len = 0;
-	for(uint16_t i = address, n = EEPROM.length(); i < n; ++i) {
+	for(EepromAddress i = address, n = EEPROM.length(); i < n; ++i) {
 		if(EEPROM[i] == 0) break;
 		++len;
 	}
 
-	if((uint32_t)len + address >= EEPROM.length()) return 0;
+	if(len + address >= EEPROM.length()) return 0;
 	return len;
-} 
+}
 
 /**
  * @brief Copies string (until len and ends string with '\0') from EEPROM to heap
  * @param address EEPROM based address
+ * @return heap allocated string, or NULL on malloc error
  */
-char *copyStrFromEEPROM(uint16_t address, size_t len) {
+char *copyStrFromEEPROM(EepromAddress address, size_t len) {
 	if ((uint32_t)address + len >= EEPROM.length()) return NULL;
 
 	char *str = static_cast<char *>(malloc(len + sizeof(char)));
 	if(!str) return NULL;
 
-	for(uint16_t i = 0; i < len; ++i) {
+	for(EepromAddress i = 0; i < len; ++i) {
 		str[i] = EEPROM[address + i];
 	}
 
@@ -350,15 +370,15 @@ char *copyStrFromEEPROM(uint16_t address, size_t len) {
 }
 
 /**
- * @brief Writes string (until len, then writes '\0') to EEPROM from heap
+ * @brief Writes string (until len, then writes '\0') to EEPROM
  * @param address EEPROM based address
- * @return 1 on success, 0 on error
+ * @return 1 on success, or 0 on error
  */
-uint8_t writeStrToEEPROM(char * str, uint16_t address, size_t len) {
+uint8_t writeStrToEEPROM(char * str, EepromAddress address, size_t len) {
 	if ((uint32_t)address + len >= EEPROM.length()) return 0;
 
 	// write until len, so \0 gets copied too (hopefully)
-	for(uint16_t i = 0; i < len; ++i) {
+	for(EepromAddress i = 0; i < len; ++i) {
 		EEPROM.update(address + i, str[i]);
 	}
 
@@ -373,10 +393,10 @@ uint8_t writeStrToEEPROM(char * str, uint16_t address, size_t len) {
  * @param question question to write
  * @return written bytes or 0 on error
  */
-uint16_t writeQuestionToEEPROM(uint16_t address, QuestionNode question) {
+uint16_t writeQuestionToEEPROM(EepromAddress address, QuestionNode question) {
 	uint16_t len = strlen(question.text);
 	uint16_t size = EMPTY_QUESTION_SIZE + len;
-	uint16_t curAddress = address;
+	EepromAddress curAddress = address;
 
 	if((uint32_t)curAddress + size >= EEPROM.length()) return 0;
 
@@ -395,12 +415,20 @@ uint16_t writeQuestionToEEPROM(uint16_t address, QuestionNode question) {
 	return curAddress - address;
 }
 
-void configureEEPROM() {
+/**
+ * @brief Writes ROM_EXIT_QUESTIONS into start of EEPROM
+ * @return 1 on success, or 0 on error
+ */
+uint8_t configureEEPROM() {
 	Serial.println(F("Configuring EEPROM."));
 
-	for(uint16_t i = 0, n = LEN(ROM_EXIT_QUESTIONS); i < n; ++i) {
-		uint16_t address = i * EXIT_QUESTION_SIZE;
-		if(address + EXIT_QUESTION_SIZE > EEPROM.length()) break;
+	for(EepromAddress i = 0, n = LEN(ROM_EXIT_QUESTIONS); i < n; ++i) {
+		EepromAddress address = i * EXIT_QUESTION_SIZE;
+		if(address + EXIT_QUESTION_SIZE > EEPROM.length()) {
+			Serial.print(i);
+			Serial.println(F(". Question doesn't fit into EEPROM."));
+			return 0;
+		}
 
 		QuestionNode progmemQuestion;
 		memcpy_P(&progmemQuestion, &ROM_EXIT_QUESTIONS[i], sizeof(QuestionNode));
@@ -408,17 +436,19 @@ void configureEEPROM() {
 		progmemQuestion.text = copyStrFromPROGMEM(progmemQuestion.text);
 		if(!progmemQuestion.text) {
 			Serial.println(F("Out of memory! Please turn off to avoid corruption."));
-			return;
+			return 0;
 		}
-		
+
 		uint16_t writtenBytes = writeQuestionToEEPROM(address, progmemQuestion);
 		if(writtenBytes != EXIT_QUESTION_SIZE) {
 			Serial.println(F("Question size mismatch! Please consult code."));
-			return;
+			return 0;
 		}
 
 		free(progmemQuestion.text);
 	}
+
+	return 1;
 }
 
 /**
@@ -427,14 +457,12 @@ void configureEEPROM() {
  * @param blockLength How much free byte is needed
  * @return address of block or 0xffff on error
  */
-uint16_t getFirstFreeSpace(uint16_t searchFrom, uint16_t blockLength) {
+EepromAddress getFirstFreeSpace(EepromAddress searchFrom, uint16_t blockLength) {
 	if((uint32_t)searchFrom + blockLength >= EEPROM.length()) return 0xffff;
 	if(blockLength == 0) return searchFrom;
 
-	Serial.println(F("Getting first free block address."));
-
 	uint16_t cellCounter = 0;
-	for(uint16_t address = searchFrom, n = EEPROM.length(); address < n; ++address) {
+	for(EepromAddress address = searchFrom, n = EEPROM.length(); address < n; ++address) {
 		if(EEPROM[address] != 0xff) {
 			cellCounter = 0;
 			continue;
@@ -449,12 +477,10 @@ uint16_t getFirstFreeSpace(uint16_t searchFrom, uint16_t blockLength) {
 	return 0xffff;
 }
 
-uint16_t getFirstQuestionAddress() {
-	return 0; // first question has array index 0
-}
-
 /**
+ * @brief Gets question from PROGMEM (text stored on heap)
  * @param address ROM_QUESTIONS index
+ * @return question
  */
 QuestionNode fetchROMQuestion(uint16_t address) {
 	QuestionNode question;
@@ -472,11 +498,11 @@ QuestionNode fetchROMQuestion(uint16_t address) {
 }
 
 /**
- * @brief Gets QuestionNode from EEPROM. Gets text from ROM_TEXTS if len(text) == 1
+ * @brief Gets question from EEPROM. Gets text from ROM_TEXTS if len(text) == 1
  * @param address EEPROM based address
- * @return question node from eeprom. text is NULL on error
+ * @return question. text is NULL on error
  */
-QuestionNode fetchEEPROMQuestion(uint16_t address) {
+QuestionNode fetchEEPROMQuestion(EepromAddress address) {
 	QuestionNode question;
 
 	size_t len = strLenEEPROM(address);
@@ -489,7 +515,7 @@ QuestionNode fetchEEPROMQuestion(uint16_t address) {
 		question.text = copyStrFromPROGMEM((const char *)pgm_read_ptr_near(&ROM_TEXTS[index]));
 	}
 
-	uint16_t offset = address + len + sizeof(char);
+	EepromAddress offset = address + len + sizeof(char);
 	EEPROM.get(offset + 0, question.yesAddress);
 	EEPROM.get(offset + 2, question.noAddress);
 	EEPROM.get(offset + 4, question.questionTag);
@@ -497,6 +523,11 @@ QuestionNode fetchEEPROMQuestion(uint16_t address) {
 	return question;
 }
 
+/**
+ * @brief Abstracted question getter
+ * @param address absolute address
+ * @return question, text is NULL on error
+ */
 QuestionNode fetchQuestion(uint16_t address) {
 	if(IS_EEPROM_ADDRESS(address))
 		return fetchEEPROMQuestion(GET_EEPROM_BASED_ADDRESS(address));
@@ -504,6 +535,9 @@ QuestionNode fetchQuestion(uint16_t address) {
 		return fetchROMQuestion(address);
 }
 
+/**
+ * @brief Prints question with help of QUESTION_TAG and currentQuestion
+ */
 void printQuestion(QuestionNode question) {
 	Serial.print('[');
 	Serial.print(currentQuestion);
@@ -517,7 +551,7 @@ void printQuestion(QuestionNode question) {
 	}
 
 	Serial.print(question.text);
-	
+
 	Serial.print('?');
 	Serial.print(' ');
 }
@@ -527,7 +561,7 @@ void printQuestion(QuestionNode question) {
  */
 void clearInputBuffer() {
 	uint8_t retries = 0;
-	
+
 	while(++retries <= 3) {
 		delay(50);
 		while(Serial.available()) { Serial.read(); }
@@ -540,7 +574,7 @@ void clearInputBuffer() {
  */
 uint8_t getAnswer() {
 	uint8_t answer;
-	
+
 	while (true) {
 		while(!Serial.available()) {}
 
@@ -562,7 +596,7 @@ uint8_t getAnswer() {
 		}
 
 		clearInputBuffer();
-		
+
 		if(answer != 0xff) {
 			return answer;
 		}
@@ -628,17 +662,22 @@ char *getInput(char *buf, uint16_t size, uint16_t minCharacters) {
 	}
 }
 
+/**
+ * @brief Makes new question and appends it to EEPROM
+ * @param currentQuestion current question (needed to modify its address)
+ * @param branchToUpdate updates noAddress (false) or yesAddress (true)
+ */
 void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 	if(eepromWriteAddress == 0xffff) {
 		Serial.print(F("EEPROM is out of space."));
 		Serial.println(F(" Skipping making new question."));
 		return;
 	}
-	
+
 	if(!IS_EEPROM_ADDRESS(currentAddress)) {
 		Serial.print(F("Tried to modify ROM question at address: "));
-        Serial.println(currentAddress);
-        Serial.println(F(" Skipping making new question."));
+		Serial.println(currentAddress);
+		Serial.println(F(" Skipping making new question."));
 		return;
 	}
 
@@ -656,7 +695,7 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 
 	while(true) {
 		Serial.print("How would you ask a question about it: ");
-		
+
 		getInput(str, sizeof(str), 2);
 
 		index = matchQuestionTag(str, &strippedStr);
@@ -672,13 +711,13 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 
 		break;
 	}
-	
+
 	QuestionNode newQuestion;
 	newQuestion.questionTag = (index == (uint8_t)-1) ? 0 : index;
 	newQuestion.text = strippedStr;
 	newQuestion.noAddress = 0;
 	newQuestion.yesAddress = 0;
-	
+
 	uint16_t writtenBytes = writeQuestionToEEPROM(eepromWriteAddress, newQuestion);
 	if(writtenBytes == 0) {
 		Serial.print(F("EEPROM is out of space."));
@@ -690,7 +729,7 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 		currentQuestion.yesAddress = GET_ABSOLUTE_ADDRESS(eepromWriteAddress);
 	else
 		currentQuestion.noAddress = GET_ABSOLUTE_ADDRESS(eepromWriteAddress);
-	
+
 	writeQuestionToEEPROM(GET_EEPROM_BASED_ADDRESS(currentAddress), currentQuestion);
 
 	eepromWriteAddress += writtenBytes;
@@ -698,7 +737,7 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 
 /**
  * @brief repeated part of yesJump and noJump
- * @return 1 if jumped
+ * @return 1 if jumped, 0 otherwise
  */
 uint8_t generalJump(uint16_t address) {
 	if(address != 0) {
@@ -711,6 +750,9 @@ uint8_t generalJump(uint16_t address) {
 	return 0;
 }
 
+/**
+ * @brief follows yesAddress if not 0, asks for new question otherwise
+ */
 void yesJump(QuestionNode question) {
 	if(generalJump(question.yesAddress)) return;
 
@@ -726,6 +768,9 @@ void yesJump(QuestionNode question) {
 	if(getAnswer()) setup();
 }
 
+/**
+ * @brief follows noAddress if not 0, asks for new question otherwise
+ */
 void noJump(QuestionNode question) {
 	if(generalJump(question.noAddress)) return;
 
@@ -738,55 +783,11 @@ void noJump(QuestionNode question) {
 	if(getAnswer()) setup();
 }
 
-typedef uint8_t uint4_t;
-#define LOW_NIBBLE(data)   (static_cast<uint4_t>((data) & 0x0f))
-#define HIGH_NIBBLE(data)  (static_cast<uint4_t>((data) >> 4))
-#define LOW_BYTE(data)     (static_cast<uint8_t>((data) & 0xff))
-#define HIGH_BYTE(data)    (static_cast<uint8_t>((data) >> 8))
-
-void print_hex_byte(uint8_t num, bool print_zero = true)
-{
-	uint4_t numH = HIGH_NIBBLE(num);
-	uint4_t numL = LOW_NIBBLE(num);
-	if(print_zero) Serial.print(F("0x"));
-	Serial.print(static_cast<char>(numH + ((numH >= 10) ? 'A' - 10 : '0')));
-	Serial.print(static_cast<char>(numL + ((numL >= 10) ? 'A' - 10 : '0')));
-}
-void print_hex_word(uint16_t num, bool print_zero = true)
-{
-	print_hex_byte(HIGH_BYTE(num), print_zero);
-	print_hex_byte(LOW_BYTE(num), false);
-}
-
-void print_eeprom()
-{
-	Serial.print(F("Offset(h) "));
-	for(uint8_t i = 0; i < 32; ++i)
-	{
-		print_hex_byte(i, false);
-		Serial.print(F("  "));
-	}
-	for(uint16_t y2 = 0, n = EEPROM.length() / 32; y2 <= n; ++y2)
-	{
-		if(y2 == n && EEPROM.length() % 32 == 0) break;
-		Serial.print(F("\n0000"));
-		uint16_t y_address = y2 * 32;
-		print_hex_word(y_address, false);
-
-		for(uint8_t x2 = 0; x2 < 32; ++x2)
-		{
-			uint16_t address = x2 + y_address;
-			if(address >= EEPROM.length()) break;
-
-			Serial.print(F("  "));
-			print_hex_byte(EEPROM[address], false);
-		}
-	}
-	Serial.println();
-}
-
+/**
+ * @brief Resets all EEPROM data to 0xff
+ */
 void clearEEPROM() {
-	for(uint16_t i = 0; i < EEPROM.length(); ++i) {
+	for(EepromAddress i = 0; i < EEPROM.length(); ++i) {
 		EEPROM.update(i, 0xff);
 	}
 }
@@ -807,7 +808,7 @@ void setup() {
 			Serial.println(F("EEPROM is out of free space. New question function is turned off."));
 	}
 
-	currentAddress = getFirstQuestionAddress();
+	currentAddress = 0;
 	currentQuestion = 0;
 	run = true;
 	Serial.println();
@@ -826,7 +827,7 @@ void loop() {
 	}
 
 	printQuestion(question);
-	
+
 	if(getAnswer()) {
 		yesJump(question);
 	} else {
