@@ -12,22 +12,22 @@
 
 #define BIT(nth_bit)                         (1U << (nth_bit))
 #define CHECK_BIT(data, bit)                 ((data) & BIT(bit))
-#define GET_WITHOUT_FLAGS(data, flagMask)    ((data) & (flagMask))
+#define GET_WITHOUT_FLAGS(data, flagMask)    ((data) & ~(flagMask))
 
 // ['\0', yesAddress, noAddress, questionTag]
-#define EMPTY_QUESTION_SIZE (sizeof(char) + sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint8_t))
+#define EMPTY_QUESTION_SIZE (sizeof(char) + sizeof(AbsoluteAddress) + sizeof(AbsoluteAddress) + sizeof(uint8_t))
 
 // [[<ROM_TEXTS index>, '\0'], yesAddress, noAddress, questionTag]
 #define EXIT_QUESTION_SIZE (EMPTY_QUESTION_SIZE + sizeof(char))
 
 #define IS_EEPROM_ADDRESS(address)           CHECK_BIT((address), 15)
-#define GET_EEPROM_BASED_ADDRESS(address)    GET_WITHOUT_FLAGS((address), ~BIT(15))
-#define GET_ABSOLUTE_ADDRESS(address)        ((address) | BIT(15))
+#define GET_EEPROM_BASED_ADDRESS(address)    GET_WITHOUT_FLAGS((address), BIT(15))
+#define GET_ABSOLUTE_ADDRESS(address, isROM) ((address) | (((isROM) == true) ? 0 : BIT(15)))
 // GET_EXIT_ADDRESS
-#define GEA(index)                           (GET_ABSOLUTE_ADDRESS((index) * EXIT_QUESTION_SIZE))
+#define GEA(index)                           (GET_ABSOLUTE_ADDRESS((index) * EXIT_QUESTION_SIZE, false))
 
 #define IS_A_AN_FLAG_PRESENT(questionType)   CHECK_BIT((questionType), 7)
-#define GET_REAL_QUESTION_TYPE(questionType) GET_WITHOUT_FLAGS((questionType), ~BIT(7))
+#define GET_REAL_QUESTION_TYPE(questionType) GET_WITHOUT_FLAGS((questionType), BIT(7))
 #define GET_WITH_A_AN_FLAG(questionType)     ((questionType) | BIT(7))
 
 // ----- Helper defines for PROGMEM data -----
@@ -48,10 +48,13 @@
 
 // ----- Types -----
 
+typedef uint16_t AbsoluteAddress;
+typedef AbsoluteAddress EepromAddress;
+
 struct QuestionNode {
 	char *text;
-	uint16_t yesAddress;
-	uint16_t noAddress;
+	AbsoluteAddress yesAddress;
+	AbsoluteAddress noAddress;
 	uint8_t questionTag;     // top bit flag for a/an article
 };
 
@@ -66,8 +69,6 @@ enum QuestionTag : uint8_t {
 
 	QT_A_AN = 1 << 7,
 };
-
-typedef uint16_t EepromAddress;
 
 // ----- Question tags -----
 // s = string
@@ -237,8 +238,8 @@ const PROGMEM QuestionNode ROM_EXIT_QUESTIONS[] = {
 
 // ----- GLobal variables -----
 
-uint16_t eepromWriteAddress;
-uint16_t currentAddress;
+EepromAddress eepromWriteAddress;
+AbsoluteAddress currentAddress;
 
 uint8_t currentQuestion;
 
@@ -478,11 +479,11 @@ EepromAddress getFirstFreeSpace(EepromAddress searchFrom, uint16_t blockLength) 
 }
 
 /**
- * @brief Gets question from PROGMEM (text stored on heap)
+ * @brief Gets question from PROGMEM (text stored on heap, NULL on malloc error)
  * @param address ROM_QUESTIONS index
  * @return question
  */
-QuestionNode fetchROMQuestion(uint16_t address) {
+QuestionNode fetchROMQuestion(AbsoluteAddress address) {
 	QuestionNode question;
 
 	QuestionNode progmemQuestion;
@@ -529,7 +530,7 @@ QuestionNode fetchEEPROMQuestion(EepromAddress address) {
  * @param address absolute address
  * @return question, text is NULL on error
  */
-QuestionNode fetchQuestion(uint16_t address) {
+QuestionNode fetchQuestion(AbsoluteAddress address) {
 	if(IS_EEPROM_ADDRESS(address))
 		return fetchEEPROMQuestion(GET_EEPROM_BASED_ADDRESS(address));
 	else
@@ -728,9 +729,9 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
 	}
 
 	if(branchToUpdate)
-		currentQuestion.yesAddress = GET_ABSOLUTE_ADDRESS(eepromWriteAddress);
+		currentQuestion.yesAddress = GET_ABSOLUTE_ADDRESS(eepromWriteAddress, false);
 	else
-		currentQuestion.noAddress = GET_ABSOLUTE_ADDRESS(eepromWriteAddress);
+		currentQuestion.noAddress = GET_ABSOLUTE_ADDRESS(eepromWriteAddress, false);
 
 	writeQuestionToEEPROM(GET_EEPROM_BASED_ADDRESS(currentAddress), currentQuestion);
 
@@ -741,7 +742,7 @@ void makeNewQuestionNode(QuestionNode currentQuestion, bool branchToUpdate) {
  * @brief repeated part of yesJump and noJump
  * @return 1 if jumped, 0 otherwise
  */
-uint8_t generalJump(uint16_t address) {
+uint8_t generalJump(AbsoluteAddress address) {
 	if(address != 0) {
 		currentAddress = address;
 		return 1;
